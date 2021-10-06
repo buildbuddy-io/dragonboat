@@ -25,6 +25,7 @@ import (
 	"github.com/lni/goutils/syncutil"
 
 	"github.com/lni/dragonboat/v3/config"
+	"github.com/lni/dragonboat/v3/raftio"
 )
 
 // NodeHostIDRegistry is a node registry backed by gossip. It is capable of
@@ -37,7 +38,7 @@ type NodeHostIDRegistry struct {
 // NewNodeHostIDRegistry creates a new NodeHostIDRegistry instance.
 func NewNodeHostIDRegistry(nhid string,
 	nhConfig config.NodeHostConfig, streamConnections uint64,
-	v config.TargetValidator) (INodeRegistry, error) {
+	v config.TargetValidator) (raftio.INodeRegistry, error) {
 	gossip, err := newGossipManager(nhid, nhConfig)
 	if err != nil {
 		return nil, err

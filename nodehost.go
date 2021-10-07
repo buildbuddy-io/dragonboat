@@ -274,11 +274,11 @@ var dn = logutil.DescribeNode
 
 var firstError = utils.FirstError
 
-type externalRegistryFactory struct {
+type gossipRegistryFactory struct {
 	nodeHostConfig config.NodeHostConfig
 }
 
-func (erf *externalRegistryFactory) Create(nhid string, streamConnections uint64, v config.TargetValidator) (raftio.INodeRegistry, error) {
+func (erf *gossipRegistryFactory) Create(nhid string, streamConnections uint64, v config.TargetValidator) (raftio.INodeRegistry, error) {
 	return transport.NewNodeHostIDRegistry(nhid, erf.nodeHostConfig, streamConnections, v)
 }
 
@@ -338,7 +338,10 @@ func NewNodeHost(nhConfig config.NodeHostConfig) (*NodeHost, error) {
 	}
 	plog.Infof("NodeHost ID: %s", nh.id.String())
 	if nh.nhConfig.AddressByNodeHostID {
-		nh.nhConfig.Expert.NodeRegistryFactory = &externalRegistryFactory{nh.nhConfig}
+		if nh.nhConfig.Expert.NodeRegistryFactory != nil {
+			panic("Expert.NodeRegistryFactory should not be set with AddressByNodeHostID and Gossip")
+		}
+		nh.nhConfig.Expert.NodeRegistryFactory = &gossipRegistryFactory{nh.nhConfig}
 	}
 	if err := nh.createNodeRegistry(); err != nil {
 		nh.Close()

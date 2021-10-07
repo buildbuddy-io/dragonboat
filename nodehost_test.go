@@ -830,7 +830,7 @@ func TestExternalNodeRegistry(t *testing.T) {
 			Seed:             []string{"127.0.0.1:25002"},
 		},
 	}
-	factory1 := &externalRegistryFactory{nhc1}
+	factory1 := &gossipRegistryFactory{nhc1}
 	nhc1.Expert.NodeRegistryFactory = factory1
 	nhc1.Gossip = config.GossipConfig{}
 	nhc1.AddressByNodeHostID = false
@@ -849,7 +849,7 @@ func TestExternalNodeRegistry(t *testing.T) {
 			Seed:             []string{"127.0.0.1:25001"},
 		},
 	}
-	factory2 := &externalRegistryFactory{nhc2}
+	factory2 := &gossipRegistryFactory{nhc2}
 	nhc2.Expert.NodeRegistryFactory = factory2
 	nhc2.Gossip = config.GossipConfig{}
 	nhc2.AddressByNodeHostID = false

@@ -169,6 +169,7 @@ func newGossipManager(nhid string,
 	stopper := syncutil.NewStopper()
 	ed := newEventDelegate(stopper)
 	cfg := memberlist.DefaultWANConfig()
+	cfg.Logger = newGossipLogWrapper()
 	cfg.Name = nhid
 	if nhConfig.Expert.TestGossipProbeInterval > 0 {
 		plog.Infof("gossip probe interval set to %s",

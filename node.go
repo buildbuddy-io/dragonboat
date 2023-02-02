@@ -1414,7 +1414,6 @@ func (n *node) processStatusTransition() bool {
 func (n *node) processUninitializedNodeStatus() bool {
 	if !n.initialized() {
 		plog.Debugf("%s checking initial snapshot", n.id())
-		n.ss.setRecovering()
 		n.reportRecoverSnapshot(rsm.Task{
 			Recover: true,
 			Initial: true,

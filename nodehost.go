@@ -1576,80 +1576,96 @@ func (nh *NodeHost) startCluster(initialMembers map[uint64]Target,
 			return ErrInvalidTarget
 		}
 	}
-	if cfg.SnapshotCompressionType == config.Snappy &&
-		invariants.Is32BitArch() {
-		// see https://github.com/golang/snappy/issues/58
-		plog.Warningf("Golang SNAPPY is known to be buggy on 32bit arch")
+	doStart := func() (*node, error) {
+		if cfg.SnapshotCompressionType == config.Snappy &&
+			invariants.Is32BitArch() {
+			// see https://github.com/golang/snappy/issues/58
+			plog.Warningf("Golang SNAPPY is known to be buggy on 32bit arch")
+		}
+		nh.mu.Lock()
+		defer nh.mu.Unlock()
+		if atomic.LoadInt32(&nh.closed) != 0 {
+			return nil, ErrClosed
+		}
+		if _, ok := nh.mu.clusters.Load(clusterID); ok {
+			return nil, ErrClusterAlreadyExist
+		}
+		if nh.engine.nodeLoaded(clusterID, nodeID) {
+			// node is still loaded in the execution engine, e.g. processing snapshot
+			return nil, ErrClusterAlreadyExist
+		}
+		if join && len(initialMembers) > 0 {
+			return nil, ErrInvalidClusterSettings
+		}
+		peers, im, err := nh.bootstrapCluster(initialMembers, join, cfg, smType)
+		if err == ErrInvalidClusterSettings {
+			return nil, err
+		}
+		if err != nil {
+			panic(err)
+		}
+		for k, v := range peers {
+			if k != nodeID {
+				nh.nodes.Add(clusterID, k, v)
+			}
+		}
+		did := nh.nhConfig.GetDeploymentID()
+		if err := nh.env.CreateSnapshotDir(did, clusterID, nodeID); err != nil {
+			if errors.Is(err, server.ErrDirMarkedAsDeleted) {
+				return nil, ErrNodeRemoved
+			}
+			panicNow(err)
+		}
+		getSnapshotDir := func(cid uint64, nid uint64) string {
+			return nh.env.GetSnapshotDir(did, cid, nid)
+		}
+		ss := newSnapshotter(clusterID, nodeID, getSnapshotDir, nh.mu.logdb, nh.fs)
+		if err := ss.processOrphans(); err != nil {
+			panicNow(err)
+		}
+		p := server.NewDoubleFixedPartitioner(nh.nhConfig.Expert.Engine.ExecShards,
+			nh.nhConfig.Expert.LogDB.Shards)
+		shard := p.GetPartitionID(clusterID)
+		rn, err := newNode(peers,
+			im,
+			cfg,
+			nh.nhConfig,
+			createStateMachine,
+			ss,
+			nh.engine,
+			nh.events.leaderInfoQ,
+			nh.transport.GetStreamSink,
+			nh.msgHandler.HandleSnapshotStatus,
+			nh.sendMessage,
+			nh.nodes,
+			nh.requestPools[nodeID%requestPoolShards],
+			nh.mu.logdb,
+			nh.getLogDBMetrics(shard),
+			nh.events.sys)
+		if err != nil {
+			panicNow(err)
+		}
+		rn.loaded()
+		nh.mu.clusters.Store(clusterID, rn)
+		nh.mu.cci++
+		nh.cciUpdated()
+		nh.engine.setCCIReady(clusterID)
+		nh.engine.setApplyReady(clusterID)
+		return rn, nil
 	}
-	nh.mu.Lock()
-	defer nh.mu.Unlock()
-	if atomic.LoadInt32(&nh.closed) != 0 {
-		return ErrClosed
-	}
-	if _, ok := nh.mu.clusters.Load(clusterID); ok {
-		return ErrClusterAlreadyExist
-	}
-	if nh.engine.nodeLoaded(clusterID, nodeID) {
-		// node is still loaded in the execution engine, e.g. processing snapshot
-		return ErrClusterAlreadyExist
-	}
-	if join && len(initialMembers) > 0 {
-		return ErrInvalidClusterSettings
-	}
-	peers, im, err := nh.bootstrapCluster(initialMembers, join, cfg, smType)
-	if err == ErrInvalidClusterSettings {
+
+	rn, err := doStart()
+	if err != nil {
 		return err
 	}
-	if err != nil {
-		panic(err)
-	}
-	for k, v := range peers {
-		if k != nodeID {
-			nh.nodes.Add(clusterID, k, v)
+
+	if cfg.WaitReady {
+		select {
+		case <-rn.initializedC:
+		case <-rn.stopC:
 		}
 	}
-	did := nh.nhConfig.GetDeploymentID()
-	if err := nh.env.CreateSnapshotDir(did, clusterID, nodeID); err != nil {
-		if errors.Is(err, server.ErrDirMarkedAsDeleted) {
-			return ErrNodeRemoved
-		}
-		panicNow(err)
-	}
-	getSnapshotDir := func(cid uint64, nid uint64) string {
-		return nh.env.GetSnapshotDir(did, cid, nid)
-	}
-	ss := newSnapshotter(clusterID, nodeID, getSnapshotDir, nh.mu.logdb, nh.fs)
-	if err := ss.processOrphans(); err != nil {
-		panicNow(err)
-	}
-	p := server.NewDoubleFixedPartitioner(nh.nhConfig.Expert.Engine.ExecShards,
-		nh.nhConfig.Expert.LogDB.Shards)
-	shard := p.GetPartitionID(clusterID)
-	rn, err := newNode(peers,
-		im,
-		cfg,
-		nh.nhConfig,
-		createStateMachine,
-		ss,
-		nh.engine,
-		nh.events.leaderInfoQ,
-		nh.transport.GetStreamSink,
-		nh.msgHandler.HandleSnapshotStatus,
-		nh.sendMessage,
-		nh.nodes,
-		nh.requestPools[nodeID%requestPoolShards],
-		nh.mu.logdb,
-		nh.getLogDBMetrics(shard),
-		nh.events.sys)
-	if err != nil {
-		panicNow(err)
-	}
-	rn.loaded()
-	nh.mu.clusters.Store(clusterID, rn)
-	nh.mu.cci++
-	nh.cciUpdated()
-	nh.engine.setCCIReady(clusterID)
-	nh.engine.setApplyReady(clusterID)
+
 	return nil
 }
 

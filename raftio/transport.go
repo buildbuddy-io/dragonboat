@@ -94,3 +94,13 @@ type ITransport interface {
 	GetSnapshotConnection(ctx context.Context,
 		target string) (ISnapshotConnection, error)
 }
+
+// INodeRegistry is the local registry interface used to keep all known
+// nodes in the system..
+type INodeRegistry interface {
+	Stop()
+	Add(clusterID uint64, nodeID uint64, url string)
+	Remove(clusterID uint64, nodeID uint64)
+	RemoveCluster(clusterID uint64)
+	Resolve(clusterID uint64, nodeID uint64) (string, string, error)
+}

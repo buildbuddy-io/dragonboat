@@ -289,7 +289,7 @@ type NodeHost struct {
 	env          *server.Env
 	nhConfig     config.NodeHostConfig
 	stopper      *syncutil.Stopper
-	nodes        transport.INodeRegistry
+	nodes        raftio.INodeRegistry
 	requestPools []*sync.Pool
 	engine       *engine
 	transport    transport.ITransport
@@ -301,6 +301,14 @@ type NodeHost struct {
 var _ nodeLoader = (*NodeHost)(nil)
 
 var dn = logutil.DescribeNode
+
+type gossipRegistryFactory struct {
+	nodeHostConfig config.NodeHostConfig
+}
+
+func (erf *gossipRegistryFactory) Create(nhid string, streamConnections uint64, v config.TargetValidator) (raftio.INodeRegistry, error) {
+	return transport.NewNodeHostIDRegistry(nhid, erf.nodeHostConfig, streamConnections, v)
+}
 
 // NewNodeHost creates a new NodeHost instance. The returned NodeHost instance
 // is configured using the specified NodeHostConfig instance. In a typical
@@ -358,6 +366,12 @@ func NewNodeHost(nhConfig config.NodeHostConfig) (*NodeHost, error) {
 		return nil, err
 	}
 	plog.Infof("NodeHost ID: %s", nh.id.String())
+	if nh.nhConfig.AddressByNodeHostID {
+		if nh.nhConfig.Expert.NodeRegistryFactory != nil {
+			panic("Expert.NodeRegistryFactory should not be set with AddressByNodeHostID and Gossip")
+		}
+		nh.nhConfig.Expert.NodeRegistryFactory = &gossipRegistryFactory{nh.nhConfig}
+	}
 	if err := nh.createNodeRegistry(); err != nil {
 		nh.Stop()
 		return nil, err
@@ -1795,10 +1809,10 @@ func (nh *NodeHost) createNodeRegistry() error {
 	validator := nh.nhConfig.GetTargetValidator()
 	// TODO:
 	// more tests here required
-	if nh.nhConfig.AddressByNodeHostID {
-		plog.Infof("AddressByNodeHostID: true, use gossip based node registry")
-		r, err := transport.NewNodeHostIDRegistry(nh.ID(),
-			nh.nhConfig, streamConnections, validator)
+	if nh.nhConfig.Expert.NodeRegistryFactory != nil {
+		plog.Infof("NodeRegistryFactory was set: using custom registry")
+		r, err := nh.nhConfig.Expert.NodeRegistryFactory.Create(nh.ID(),
+			streamConnections, validator)
 		if err != nil {
 			return err
 		}

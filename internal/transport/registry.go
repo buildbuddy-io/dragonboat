@@ -32,17 +32,7 @@ var (
 	ErrUnknownTarget = errors.New("target address unknown")
 )
 
-// INodeRegistry is the local registry interface used to keep all known
-// nodes in the system..
-type INodeRegistry interface {
-	Stop()
-	Add(clusterID uint64, nodeID uint64, url string)
-	Remove(clusterID uint64, nodeID uint64)
-	RemoveCluster(clusterID uint64)
-	Resolve(clusterID uint64, nodeID uint64) (string, string, error)
-}
-
-var _ INodeRegistry = (*Registry)(nil)
+var _ raftio.INodeRegistry = (*Registry)(nil)
 var _ IResolver = (*Registry)(nil)
 
 // Registry is used to manage all known node addresses in the multi raft system.

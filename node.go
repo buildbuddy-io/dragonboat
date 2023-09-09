@@ -103,7 +103,7 @@ type node struct {
 	logReader             *logdb.LogReader
 	logdb                 raftio.ILogDB
 	snapshotter           *snapshotter
-	nodeRegistry          transport.INodeRegistry
+	nodeRegistry          raftio.INodeRegistry
 	stopC                 chan struct{}
 	clusterInfo           atomic.Value
 	currentTick           uint64
@@ -140,7 +140,7 @@ func newNode(peers map[uint64]string,
 	getStreamSink func(uint64, uint64) *transport.Sink,
 	handleSnapshotStatus func(uint64, uint64, bool),
 	sendMessage func(pb.Message),
-	nodeRegistry transport.INodeRegistry,
+	nodeRegistry raftio.INodeRegistry,
 	pool *sync.Pool,
 	ldb raftio.ILogDB,
 	metrics *logDBMetrics,

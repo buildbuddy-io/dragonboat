@@ -279,7 +279,7 @@ type NodeHost struct {
 		sys         *sysEventListener
 	}
 	registry     INodeHostRegistry
-	nodes        registry.INodeRegistry
+	nodes        raftio.INodeRegistry
 	fs           vfs.IFS
 	transport    transport.ITransport
 	id           *id.UUID
@@ -354,6 +354,11 @@ func NewNodeHost(nhConfig config.NodeHostConfig) (*NodeHost, error) {
 		return nil, err
 	}
 	plog.Infof("NodeHost ID: %s", nh.id.String())
+	if nh.nhConfig.AddressByNodeHostID {
+		if nh.nhConfig.Expert.NodeRegistryFactory != nil {
+			panic("Expert.NodeRegistryFactory should not be set with AddressByNodeHostID and Gossip")
+		}
+	}
 	if err := nh.createNodeRegistry(); err != nil {
 		nh.Close()
 		return nil, err
@@ -461,7 +466,7 @@ func (nh *NodeHost) ID() string {
 // GetNodeHostRegistry returns the NodeHostRegistry instance that can be used
 // to query NodeHost details shared between NodeHost instances by gossip.
 func (nh *NodeHost) GetNodeHostRegistry() (INodeHostRegistry, bool) {
-	return nh.registry, nh.nhConfig.AddressByNodeHostID
+	return nh.registry, nh.nhConfig.AddressByNodeHostID || nh.nhConfig.Expert.NodeRegistryFactory != nil
 }
 
 // StartReplica adds the specified Raft replica node to the NodeHost and starts
@@ -1754,6 +1759,14 @@ func (nh *NodeHost) createNodeRegistry() error {
 			return err
 		}
 		nh.registry = r.GetNodeHostRegistry()
+		nh.nodes = r
+	} else if nh.nhConfig.Expert.NodeRegistryFactory != nil {
+		plog.Infof("Expert.NodeRegistryFactory was set: using custom registry")
+		r, err := nh.nhConfig.Expert.NodeRegistryFactory.Create(nh.ID(),
+			streamConnections, validator)
+		if err != nil {
+			return err
+		}
 		nh.nodes = r
 	} else {
 		plog.Infof("using regular node registry")

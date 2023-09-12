@@ -54,7 +54,6 @@ import (
 
 	"github.com/lni/dragonboat/v4/config"
 	"github.com/lni/dragonboat/v4/internal/invariants"
-	"github.com/lni/dragonboat/v4/internal/registry"
 	"github.com/lni/dragonboat/v4/internal/server"
 	"github.com/lni/dragonboat/v4/internal/settings"
 	"github.com/lni/dragonboat/v4/internal/vfs"
@@ -182,7 +181,7 @@ type Transport struct {
 	preSend      atomic.Value
 	postSend     atomic.Value
 	msgHandler   IMessageHandler
-	resolver     registry.IResolver
+	resolver     raftio.IResolver
 	trans        raftio.ITransport
 	fs           vfs.IFS
 	stopper      *syncutil.Stopper
@@ -200,11 +199,11 @@ var _ ITransport = (*Transport)(nil)
 
 // NewTransport creates a new Transport object.
 func NewTransport(nhConfig config.NodeHostConfig,
-	handler IMessageHandler, env *server.Env, resolver registry.IResolver,
+	handler IMessageHandler, env *server.Env, resolver raftio.IResolver,
 	dir server.SnapshotDirFunc, sysEvents ITransportEvent,
 	fs vfs.IFS) (*Transport, error) {
 	sourceID := nhConfig.RaftAddress
-	if nhConfig.AddressByNodeHostID {
+	if nhConfig.AddressByNodeHostID || nhConfig.Expert.NodeRegistryFactory != nil {
 		sourceID = env.NodeHostID()
 	}
 	t := &Transport{

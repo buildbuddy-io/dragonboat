@@ -32,24 +32,8 @@ var (
 	ErrUnknownTarget = errors.New("target address unknown")
 )
 
-// IResolver converts the (shard id, node id) tuple to network address.
-type IResolver interface {
-	Resolve(uint64, uint64) (string, string, error)
-	Add(uint64, uint64, string)
-}
-
-// INodeRegistry is the local registry interface used to keep all known
-// nodes in the system.
-type INodeRegistry interface {
-	Close() error
-	Add(shardID uint64, replicaID uint64, url string)
-	Remove(shardID uint64, replicaID uint64)
-	RemoveShard(shardID uint64)
-	Resolve(shardID uint64, replicaID uint64) (string, string, error)
-}
-
-var _ INodeRegistry = (*Registry)(nil)
-var _ IResolver = (*Registry)(nil)
+var _ raftio.INodeRegistry = (*Registry)(nil)
+var _ raftio.IResolver = (*Registry)(nil)
 
 // Registry is used to manage all known node addresses in the multi raft system.
 // The transport layer uses this address registry to locate nodes.

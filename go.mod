@@ -1,5 +1,7 @@
 module github.com/lni/dragonboat/v4
 
+replace github.com/lni/vfs => github.com/buildbuddy-io/vfs
+
 require (
 	github.com/VictoriaMetrics/metrics v1.18.1
 	github.com/cespare/xxhash/v2 v2.2.0
@@ -10,7 +12,7 @@ require (
 	github.com/hashicorp/memberlist v0.3.1
 	github.com/kr/pretty v0.3.1
 	github.com/lni/goutils v1.4.0
-	github.com/lni/vfs v0.2.1-0.20231221160030-d43d3c60804c
+	github.com/lni/vfs v0.2.2
 	github.com/pierrec/lz4/v4 v4.1.14
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/exp v0.0.0-20200513190911-00229845015e

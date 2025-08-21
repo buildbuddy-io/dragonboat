@@ -161,6 +161,7 @@ func ImportSnapshot(nhConfig config.NodeHostConfig,
 		return err
 	}
 	if !ok {
+		plog.Infof("isCompleteSnapshotImage check failed")
 		return ErrIncompleteSnapshot
 	}
 	if err := checkMembers(oldss.Membership, memberNodes); err != nil {
@@ -256,9 +257,9 @@ func checkImportSettings(nhConfig config.NodeHostConfig,
 		plog.Errorf("node ID not found in the memberNode map")
 		return ErrInvalidMembers
 	}
-	if nhConfig.RaftAddress != addr {
-		plog.Errorf("node address in NodeHostConfig %s, in members %s",
-			nhConfig.RaftAddress, addr)
+	if nhConfig.RaftAddress != addr && nhConfig.NodeHostID != addr {
+		plog.Errorf("... node address, NodeHostID in NodeHostConfig are %q, %q, in members %q",
+			nhConfig.RaftAddress, nhConfig.NodeHostID, addr)
 		return ErrInvalidMembers
 	}
 	return nil
@@ -270,6 +271,7 @@ func isCompleteSnapshotImage(ssfp string,
 	if err != nil {
 		return false, err
 	}
+	plog.Infof("checksum: %q, expected: %q", checksum, ss.Checksum)
 	return bytes.Equal(checksum, ss.Checksum), nil
 }
 
@@ -286,6 +288,7 @@ func getSnapshotFilepath(dir string, fs vfs.IFS) (string, error) {
 		return "", err
 	}
 	if len(files) != 1 {
+		plog.Infof("number of files is %d", len(files))
 		return "", ErrIncompleteSnapshot
 	}
 	return files[0], nil
@@ -310,15 +313,19 @@ func getSnapshotFilenames(path string, fs vfs.IFS) ([]string, error) {
 	}
 	results := make([]string, 0)
 	for _, v := range files {
+		plog.Infof("stat %q", fs.PathJoin(path, v))
 		file, err := fs.Stat(fs.PathJoin(path, v))
 		if err != nil {
 			return nil, err
 		}
 		if file.IsDir() {
+			plog.Infof("this is a dir")
 			continue
 		}
 		if strings.HasSuffix(file.Name(), server.SnapshotFileSuffix) {
 			results = append(results, file.Name())
+		} else {
+			plog.Infof("no snapshot file suffix")
 		}
 	}
 	return results, nil

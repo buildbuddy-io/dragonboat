@@ -2,6 +2,8 @@ module github.com/lni/dragonboat/v4
 
 replace github.com/lni/vfs v0.2.1-0.20231221160030-d43d3c60804c => github.com/buildbuddy-io/vfs v0.2.3
 
+replace github.com/lni/goutils v1.4.0 => github.com/buildbuddy-io/goutils v1.4.1
+
 require (
 	github.com/VictoriaMetrics/metrics v1.18.1
 	github.com/cespare/xxhash/v2 v2.2.0
@@ -16,7 +18,6 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.14
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df
-	golang.org/x/sys v0.18.0
 )
 
 require (
@@ -54,7 +55,7 @@ require (
 	github.com/valyala/histogram v1.2.0 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/net v0.23.0 // indirect
-	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

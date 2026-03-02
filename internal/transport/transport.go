@@ -294,7 +294,7 @@ func (t *Transport) GetCircuitBreaker(key string) *circuit.Breaker {
 	t.mu.Lock()
 	breaker, ok := t.mu.breakers[key]
 	if !ok {
-		breaker = netutil.NewBreaker()
+		breaker = netutil.NewBreakerWithBackoff(50*time.Millisecond, 200*time.Millisecond)
 		t.mu.breakers[key] = breaker
 	}
 	t.mu.Unlock()
